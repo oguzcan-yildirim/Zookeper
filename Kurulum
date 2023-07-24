@@ -1,0 +1,57 @@
+sudo apt install default-jre default-jdk
+sudo useradd -m zookeeper -s /usr/sbin/nologin
+######  Zookeeper kurulum ve yapılandırılması Tüm node‘ler aynı adımlar######
+cd /opt/
+sudo wget https://dlcdn.apache.org/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz
+sudo tar xzf apache-zookeeper-3.6.3-bin.tar.gz
+sudo rm apache-zookeeper-3.6.3-bin.tar.gz
+sudo mv apache-zookeeper-3.6.3-bin/conf/zoo_sample.cfg apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+sudo vi apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+"
+dataDir=/var/zookeeper
+clientPort=2181
+server.1=10.10.10.181:2888:3888
+server.2=10.10.10.51:2888:3888
+server.3=10.10.10.128:2888:3888
+"
+sudo mkdir /var/zookeeper/ -p
+#### Herbir node‘de farklı echo satırı yapılabilir.######
+#kafka01 node
+sudo echo '1' >> /var/zookeeper/myid
+
+#kafka02 node
+sudo echo '2' >> /var/zookeeper/myid
+
+#kafka03 node
+sudo echo '3' >> /var/zookeeper/myid
+
+sudo /opt/apache-zookeeper-3.6.3-bin/bin/zkServer.sh start /opt/apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+sudo /opt/apache-zookeeper-3.6.3-bin/bin/zkServer.sh stop /opt/apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+sudo chown -R zookeeper:zookeeper /opt/apache-zookeeper-3.6.3-bin/
+sudo chown -R zookeeper:zookeeper /var/zookeeper/
+sudo vi /lib/systemd/system/zookeeper.service
+"
+[Unit]
+Description=Zookeeper Daemon
+Documentation=http://zookeeper.apache.org
+Requires=network.target
+After=network.target
+
+[Service]
+Type=forking
+WorkingDirectory=/opt/apache-zookeeper-3.6.3-bin
+User=zookeeper
+Group=zookeeper
+ExecStart=/opt/apache-zookeeper-3.6.3-bin/bin/zkServer.sh start /opt/apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+ExecStop=/opt/apache-zookeeper-3.6.3-bin/bin/zkServer.sh stop /opt/apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+ExecReload=/opt/apache-zookeeper-3.6.3-bin/bin/zkServer.sh restart /opt/apache-zookeeper-3.6.3-bin/conf/zoo.cfg
+TimeoutSec=30
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+"
+sudo systemctl daemon-reload
+sudo systemctl start zookeeper.service
+sudo systemctl enable zookeeper.service
+sudo systemctl status zookeeper.service
